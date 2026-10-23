@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seattle Weather &amp; Rainfall Intelligence Engine</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-wrapper">
+        <!-- Header Section -->
+        <header class="app-header">
+            <div class="badge-pill">Project 11 &bull; Dual-Engine Machine Learning System</div>
+            <h1>Seattle Weather Engine ⛅</h1>
+            <p class="subtitle">Predicting <strong>Rain Occurrence &amp; Probability (Classification)</strong> and <strong>Precipitation Volume (Regression)</strong> trained on the official Seattle weather dataset.</p>
+        </header>
+
+        <!-- Presets Bar -->
+        <div class="preset-card">
+            <span class="preset-title">⚡ Quick Seattle Presets:</span>
+            <div class="preset-buttons">
+                <button type="button" class="preset-btn" onclick="applyPreset('rainy_fall')">🌧️ Typical Rainy Fall (Nov)</button>
+                <button type="button" class="preset-btn" onclick="applyPreset('summer_dry')">☀️ Warm Sunny Summer (Jul)</button>
+                <button type="button" class="preset-btn" onclick="applyPreset('winter_cold')">❄️ Chilly Winter (Jan)</button>
+                <button type="button" class="preset-btn" onclick="applyPreset('windy_storm')">🌬️ Stormy Wind Day</button>
+            </div>
+        </div>
+
+        {% if error_message %}
+            <div class="alert-box error-alert">
+                ⚠️ {{ error_message }}
+            </div>
+        {% endif %}
+
+        <!-- Dual Results Section -->
+        {% if has_prediction %}
+            <div class="results-container" id="prediction-results">
+                <div class="results-header">
+                    <h2>🎯 Predictive Analysis Outputs</h2>
+                    <span class="results-timestamp">Observed Date: {{ form_data.year }}-{{ "%02d"|format(form_data.month) }}-{{ "%02d"|format(form_data.day) }}</span>
+                </div>
+
+                <div class="results-grid">
+                    <!-- Classification Card -->
+                    <div class="result-card classification-card {% if rain_status == 'Yes' %}card-rain{% else %}card-norain{% endif %}">
+                        <div class="card-tag">Model 1 &bull; Classification</div>
+                        <div class="card-icon">{% if rain_status == 'Yes' %}🌧️{% else %}☀️{% endif %}</div>
+                        <h3>Rain Status: <span class="status-highlight">{% if rain_status == 'Yes' %}Yes (Rain / Drizzle){% else %}No (Clear / No Rain){% endif %}</span></h3>
+                        
+                        <p class="category-chip">{{ rain_category }}</p>
+
+                        {% if rain_prob is not none %}
+                            <div class="prob-wrapper">
+                                <div class="prob-label">
+                                    <span>Rain Probability:</span>
+                                    <strong>{{ rain_prob }}%</strong>
+                                </div>
+                                <div class="progress-track">
+                                    <div class="progress-fill {% if rain_prob > 50 %}fill-high{% else %}fill-low{% endif %}" style="width: {{ rain_prob }}%;"></div>
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <div class="model-badge">
+                            <span class="badge-label">Model:</span>
+                            <span class="badge-name">{{ selected_clf_name }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Regression Card -->
+                    <div class="result-card regression-card">
+                        <div class="card-tag">Model 2 &bull; Regression</div>
+                        <div class="card-icon">💧</div>
+                        <h3>Expected Rain Volume</h3>
+                        <div class="volume-display">
+                            <span class="volume-number">{{ "%.2f"|format(rain_amount) }}</span>
+                            <span class="volume-unit">mm</span>
+                        </div>
+
+                        <!-- Intensity scale -->
+                        <div class="intensity-bar">
+                            <div class="intensity-step {% if rain_amount == 0 %}active{% endif %}">None (0mm)</div>
+                            <div class="intensity-step {% if rain_amount > 0 and rain_amount <= 2.5 %}active{% endif %}">Light (&lt;2.5)</div>
+                            <div class="intensity-step {% if rain_amount > 2.5 and rain_amount <= 10 %}active{% endif %}">Moderate (2.5-10)</div>
+                            <div class="intensity-step {% if rain_amount > 10 %}active{% endif %}">Heavy (&gt;10)</div>
+                        </div>
+
+                        <div class="model-badge">
+                            <span class="badge-label">Model:</span>
+                            <span class="badge-name">{{ selected_reg_name }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Input Form Card -->
+        <div class="main-card">
+            <form action="/predict" method="POST" id="weather-form">
+                <div class="section-title">
+                    <span>1</span> Weather Observations (Seattle Dataset Features)
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="temp_max">Max Temp (°C)</label>
+                        <input type="number" step="0.1" id="temp_max" name="temp_max" value="{{ form_data.temp_max }}" required>
+                        <span class="input-hint">Maximum daily recorded temperature</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="temp_min">Min Temp (°C)</label>
+                        <input type="number" step="0.1" id="temp_min" name="temp_min" value="{{ form_data.temp_min }}" required>
+                        <span class="input-hint">Minimum daily recorded temperature</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="wind">Wind Speed (m/s)</label>
+                        <input type="number" step="0.1" id="wind" name="wind" value="{{ form_data.wind }}" required>
+                        <span class="input-hint">Average surface wind velocity</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="year">Year</label>
+                        <input type="number" id="year" name="year" value="{{ form_data.year }}" required>
+                        <span class="input-hint">Observation year</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="month">Month (1-12)</label>
+                        <input type="number" id="month" name="month" min="1" max="12" value="{{ form_data.month }}" required>
+                        <span class="input-hint">Seasonal weather pattern</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="day">Day (1-31)</label>
+                        <input type="number" id="day" name="day" min="1" max="31" value="{{ form_data.day }}" required>
+                        <span class="input-hint">Calendar day of month</span>
+                    </div>
+                </div>
+
+                <div class="section-title" style="margin-top: 25px;">
+                    <span>2</span> Select Algorithms for Simultaneous Execution
+                </div>
+
+                <div class="form-grid algorithms-grid">
+                    <div class="form-group">
+                        <label for="clf_algo">Classification Algorithm</label>
+                        <select id="clf_algo" name="clf_algo">
+                            <option value="random_forest" {% if form_data.selected_clf == 'random_forest' %}selected{% endif %}>🌲 Random Forest Classifier</option>
+                            <option value="xgboost" {% if form_data.selected_clf == 'xgboost' %}selected{% endif %}>⚡ XGBoost Classifier</option>
+                            <option value="logistic_regression" {% if form_data.selected_clf == 'logistic_regression' %}selected{% endif %}>📈 Logistic Regression</option>
+                            <option value="decision_tree" {% if form_data.selected_clf == 'decision_tree' %}selected{% endif %}>🌿 Decision Tree Classifier</option>
+                        </select>
+                        <span class="input-hint">Predicts: Rain occurrence &amp; probability</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg_algo">Regression Algorithm</label>
+                        <select id="reg_algo" name="reg_algo">
+                            <option value="random_forest" {% if form_data.selected_reg == 'random_forest' %}selected{% endif %}>🌲 Random Forest Regressor</option>
+                            <option value="xgboost" {% if form_data.selected_reg == 'xgboost' %}selected{% endif %}>⚡ XGBoost Regressor</option>
+                            <option value="linear_regression" {% if form_data.selected_reg == 'linear_regression' %}selected{% endif %}>📏 Linear Regression</option>
+                            <option value="ridge" {% if form_data.selected_reg == 'ridge' %}selected{% endif %}>⚖️ Ridge Regressor</option>
+                        </select>
+                        <span class="input-hint">Predicts: Precipitation volume (mm)</span>
+                    </div>
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    <span>⚡ Analyze with Both Algorithms</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Model Evaluation Benchmark Section -->
+        <div class="benchmark-card">
+            <details>
+                <summary>
+                    <span class="summary-title">📊 View Algorithm Benchmark Metrics (Test Set)</span>
+                    <span class="summary-badge">Seattle Weather Dataset Split</span>
+                </summary>
+                <div class="benchmark-content">
+                    <div class="benchmark-tables">
+                        <div class="table-wrap">
+                            <h4>Classification Benchmark</h4>
+                            <table class="metric-table">
+                                <thead>
+                                    <tr>
+                                        <th>Model</th>
+                                        <th>Accuracy</th>
+                                        <th>Precision</th>
+                                        <th>Recall</th>
+                                        <th>F1-Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for model_key, metrics in clf_metrics.items() %}
+                                    <tr {% if model_key == form_data.selected_clf %}class="highlight-row"{% endif %}>
+                                        <td><strong>{{ clf_names[model_key] }}</strong></td>
+                                        <td>{{ metrics.accuracy }}%</td>
+                                        <td>{{ metrics.precision }}%</td>
+                                        <td>{{ metrics.recall }}%</td>
+                                        <td>{{ metrics.f1_score }}%</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="table-wrap">
+                            <h4>Regression Benchmark</h4>
+                            <table class="metric-table">
+                                <thead>
+                                    <tr>
+                                        <th>Model</th>
+                                        <th>MAE (mm)</th>
+                                        <th>RMSE (mm)</th>
+                                        <th>R² Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for model_key, metrics in reg_metrics.items() %}
+                                    <tr {% if model_key == form_data.selected_reg %}class="highlight-row"{% endif %}>
+                                        <td><strong>{{ reg_names[model_key] }}</strong></td>
+                                        <td>{{ metrics.mae }} mm</td>
+                                        <td>{{ metrics.rmse }} mm</td>
+                                        <td>{{ metrics.r2_score }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <footer class="app-footer">
+            <p>Seattle Weather Intelligence Engine &bull; Dual Classification &amp; Regression Models &bull; Vega Datasets</p>
+        </footer>
+    </div>
+
+    <script>
+        function applyPreset(type) {
+            const presets = {
+                'rainy_fall': {
+                    temp_max: 14.5,
+                    temp_min: 6.2,
+                    wind: 4.1,
+                    year: 2025,
+                    month: 11,
+                    day: 18
+                },
+                'summer_dry': {
+                    temp_max: 27.8,
+                    temp_min: 15.6,
+                    wind: 2.3,
+                    year: 2025,
+                    month: 7,
+                    day: 20
+                },
+                'winter_cold': {
+                    temp_max: 7.2,
+                    temp_min: 1.1,
+                    wind: 3.5,
+                    year: 2025,
+                    month: 1,
+                    day: 15
+                },
+                'windy_storm': {
+                    temp_max: 11.0,
+                    temp_min: 5.5,
+                    wind: 8.2,
+                    year: 2025,
+                    month: 12,
+                    day: 4
+                }
+            };
+
+            const data = presets[type];
+            if (data) {
+                document.getElementById('temp_max').value = data.temp_max;
+                document.getElementById('temp_min').value = data.temp_min;
+                document.getElementById('wind').value = data.wind;
+                document.getElementById('year').value = data.year;
+                document.getElementById('month').value = data.month;
+                document.getElementById('day').value = data.day;
+            }
+        }
+
+        // Auto scroll to results if generated
+        window.addEventListener('DOMContentLoaded', () => {
+            const results = document.getElementById('prediction-results');
+            if (results) {
+                results.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+    </script>
+</body>
+</html>

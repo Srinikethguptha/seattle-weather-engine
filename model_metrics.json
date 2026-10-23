@@ -1,0 +1,50 @@
+{
+  "classification": {
+    "random_forest": {
+      "accuracy": 76.79,
+      "precision": 76.3,
+      "recall": 74.1,
+      "f1_score": 75.18
+    },
+    "xgboost": {
+      "accuracy": 75.43,
+      "precision": 75.19,
+      "recall": 71.94,
+      "f1_score": 73.53
+    },
+    "logistic_regression": {
+      "accuracy": 75.09,
+      "precision": 74.26,
+      "recall": 72.66,
+      "f1_score": 73.45
+    },
+    "decision_tree": {
+      "accuracy": 70.65,
+      "precision": 69.06,
+      "recall": 69.06,
+      "f1_score": 69.06
+    }
+  },
+  "regression": {
+    "random_forest": {
+      "mae": 3.54,
+      "rmse": 6.11,
+      "r2_score": 0.038
+    },
+    "xgboost": {
+      "mae": 3.89,
+      "rmse": 6.75,
+      "r2_score": -0.172
+    },
+    "linear_regression": {
+      "mae": 3.25,
+      "rmse": 5.58,
+      "r2_score": 0.198
+    },
+    "ridge": {
+      "mae": 3.25,
+      "rmse": 5.58,
+      "r2_score": 0.198
+    }
+  }
+}
